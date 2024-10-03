@@ -7,14 +7,18 @@ const fs = require("fs");
 const path = require("path");
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000; // Use environment variable for the port
 
 // Middleware setup
 app.use(cors());
 app.use(bodyParser.json());
 
+// MongoDB connection string
+const mongoURI =
+  "mongodb+srv://alexpulan:1a2l3e4x555@cluster0.v5vru.mongodb.net/?retryWrites=true&w=majority";
+
 // Connect to MongoDB
-mongoose.connect("mongodb://localhost:27017/product-timer", {
+mongoose.connect(mongoURI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
@@ -40,7 +44,6 @@ const productSchema = new mongoose.Schema({
     default: "Not Started",
   },
   date: {
-    // New field to track the date
     type: Date,
     default: Date.now,
   },
@@ -95,11 +98,6 @@ app.put("/products/:category/:productId", async (req, res) => {
     const { category, productId } = req.params;
     const { status, elapsedTime } = req.body;
 
-    // Log incoming request
-    console.log(
-      `Updating product ID: ${productId} in category: ${category} with status: ${status} and elapsedTime: ${elapsedTime}`
-    );
-
     // Decode category in case it's URL-encoded
     const decodedCategory = decodeURIComponent(category);
 
@@ -116,11 +114,9 @@ app.put("/products/:category/:productId", async (req, res) => {
         await categoryData.save();
         res.json({ message: "Product updated successfully", product });
       } else {
-        console.error("Product not found");
         res.status(404).json({ message: "Product not found" });
       }
     } else {
-      console.error("Category not found");
       res.status(404).json({ message: "Category not found" });
     }
   } catch (error) {
@@ -129,7 +125,10 @@ app.put("/products/:category/:productId", async (req, res) => {
   }
 });
 
-// Start server
+// Start the server (Vercel automatically handles this when deployed)
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+// Export the app for Vercel
+module.exports = app;
