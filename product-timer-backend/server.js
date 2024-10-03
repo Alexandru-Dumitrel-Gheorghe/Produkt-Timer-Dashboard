@@ -7,17 +7,17 @@ const fs = require("fs");
 const path = require("path");
 
 const app = express();
-const PORT = process.env.PORT || 5000; // Use environment variable for the port
+const PORT = process.env.PORT || 5000; // Folosește variabila de mediu pentru port
 
-// Middleware setup
+// Configurarea middleware-ului
 app.use(cors());
 app.use(bodyParser.json());
 
-// Connect to MongoDB using environment variable
+// Conectare la MongoDB folosind variabila de mediu
 mongoose
   .connect(process.env.MONGODB_URI, {
-    connectTimeoutMS: 20000, // 20 seconds
-    socketTimeoutMS: 45000, // 45 seconds
+    connectTimeoutMS: 20000, // 20 de secunde
+    socketTimeoutMS: 45000, // 45 de secunde
   })
   .then(() => console.log("Connected to MongoDB"))
   .catch((error) => console.error("MongoDB connection error:", error));
@@ -25,7 +25,7 @@ mongoose
 const db = mongoose.connection;
 db.on("error", console.error.bind(console, "MongoDB connection error:"));
 
-// Define Product Schema
+// Definirea schema pentru produse
 const productSchema = new mongoose.Schema({
   equipment: String,
   articleNumber: String,
@@ -45,23 +45,23 @@ const productSchema = new mongoose.Schema({
   },
 });
 
-// Define Category Schema with nested products
+// Definirea schema pentru categorii cu produse încorporate
 const categorySchema = new mongoose.Schema({
   category: String,
   products: [productSchema],
 });
 
-// Create Category model
+// Crearea modelului de categorie
 const Category = mongoose.model("Category", categorySchema);
 
-// Load initial products from products.json
+// Încărcarea produselor inițiale din products.json
 const loadInitialProducts = async () => {
   try {
     const dataPath = path.join(__dirname, "data", "products.json");
     const data = fs.readFileSync(dataPath, "utf8");
     const categories = JSON.parse(data);
 
-    // Check if the categories collection is empty
+    // Verificarea dacă colecția de categorii este goală
     const count = await Category.countDocuments();
     if (count === 0) {
       await Category.insertMany(categories);
@@ -72,12 +72,12 @@ const loadInitialProducts = async () => {
   }
 };
 
-// Call the function to load initial products
+// Apelarea funcției pentru a încărca produsele inițiale
 loadInitialProducts();
 
-// Routes
+// Rutele
 
-// Get all categories and products
+// Obține toate categoriile și produsele
 app.get("/products", async (req, res) => {
   try {
     const categories = await Category.find();
@@ -88,25 +88,25 @@ app.get("/products", async (req, res) => {
   }
 });
 
-// Update product status (start, pause, stop)
+// Actualizarea stării produsului (începere, pauză, oprire)
 app.put("/products/:category/:productId", async (req, res) => {
   try {
     const { category, productId } = req.params;
     const { status, elapsedTime } = req.body;
 
-    // Decode category in case it's URL-encoded
+    // Decodificarea categoriei în cazul în care este codificată URL
     const decodedCategory = decodeURIComponent(category);
 
-    // Find the category and product to update
+    // Găsirea categoriei și produsului de actualizat
     const categoryData = await Category.findOne({ category: decodedCategory });
     if (categoryData) {
       const product = categoryData.products.id(productId);
       if (product) {
-        // Update product details
+        // Actualizarea detaliilor produsului
         product.status = status;
         if (elapsedTime !== undefined) product.elapsedTime = elapsedTime;
 
-        // Save changes
+        // Salvarea modificărilor
         await categoryData.save();
         res.json({ message: "Product updated successfully", product });
       } else {
@@ -121,10 +121,10 @@ app.put("/products/:category/:productId", async (req, res) => {
   }
 });
 
-// Start the server (Vercel automatically handles this when deployed)
+// Pornirea serverului
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-// Export the app for Vercel
+// Exportarea aplicației pentru Vercel
 module.exports = app;
