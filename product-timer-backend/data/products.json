@@ -1,0 +1,179 @@
+[
+  {
+    "category": "Laserröhren",
+    "products": [
+      {
+        "equipment": "Mex-S",
+        "articleNumber": "505054",
+        "timeRequired": "03:15:00"
+      },
+      {
+        "equipment": "Mex-20",
+        "articleNumber": "509841",
+        "timeRequired": "05:30:00"
+      },
+      {
+        "equipment": "Mex-M",
+        "articleNumber": "510640",
+        "timeRequired": "05:00:00"
+      }
+    ]
+  },
+  {
+    "category": "Entladeeinheiten",
+    "products": [
+      {
+        "equipment": "Mex-S",
+        "timeRequired": "03:15:00"
+      },
+      {
+        "equipment": "Mex-20",
+        "timeRequired": "03:00:00"
+      },
+      {
+        "equipment": "Mex-M",
+        "timeRequired": "03:30:00"
+      }
+    ]
+  },
+  {
+    "category": "Gasumwälzung",
+    "products": [
+      {
+        "equipment": "Mex-S",
+        "articleNumber": "505055",
+        "timeRequired": "01:15:00"
+      },
+      {
+        "equipment": "Mex-S-K",
+        "articleNumber": "511555",
+        "timeRequired": "02:00:00"
+      },
+      {
+        "equipment": "Mex-20",
+        "articleNumber": "509843",
+        "timeRequired": "02:30:00"
+      },
+      {
+        "equipment": "Mex-M",
+        "articleNumber": "508936",
+        "timeRequired": "02:00:00"
+      }
+    ]
+  },
+  {
+    "category": "Ventilblock",
+    "products": [
+      {
+        "equipment": "Mex-S",
+        "timeRequired": "01:45:00"
+      },
+      {
+        "equipment": "MLI",
+        "timeRequired": "01:30:00"
+      }
+    ]
+  },
+  {
+    "category": "Lüfterwalze",
+    "products": [
+      {
+        "equipment": "Mex-S",
+        "timeRequired": "00:30:00"
+      },
+      {
+        "equipment": "Mex-M",
+        "timeRequired": "00:30:00"
+      }
+    ]
+  },
+  {
+    "category": "Staubabscheider",
+    "products": [
+      {
+        "equipment": "Mex-S",
+        "timeRequired": "00:15:00"
+      }
+    ]
+  },
+  {
+    "category": "Emon",
+    "products": [
+      {
+        "equipment": "Mex-S",
+        "articleNumber": "750er",
+        "timeRequired": "00:30:00"
+      },
+      {
+        "equipment": "1050er",
+        "timeRequired": "02:00:00"
+      },
+      {
+        "equipment": "H1",
+        "timeRequired": "01:15:00"
+      },
+      {
+        "equipment": "MLI",
+        "articleNumber": "508330",
+        "timeRequired": "01:00:00"
+      },
+      {
+        "equipment": "MLI",
+        "articleNumber": "Shutter",
+        "timeRequired": "02:00:00"
+      },
+      {
+        "equipment": "XMR2012",
+        "timeRequired": "03:00:00"
+      }
+    ]
+  },
+  {
+    "category": "Strahlengang",
+    "products": [
+      {
+        "equipment": "Umlenker",
+        "articleNumber": "#1",
+        "timeRequired": "00:45:00"
+      },
+      {
+        "equipment": "Umlenker",
+        "articleNumber": "#2",
+        "timeRequired": "00:45:00"
+      },
+      {
+        "equipment": "Blendver.",
+        "timeRequired": "01:00:00"
+      },
+      {
+        "equipment": "TPV",
+        "timeRequired": "03:00:00"
+      }
+    ]
+  },
+  {
+    "category": "Optiken / Strahlteiler",
+    "products": [
+      {
+        "equipment": "Allgemein",
+        "timeRequired": "00:02:00",
+        "notes": "pro/St."
+      },
+      {
+        "equipment": "Mex-S",
+        "timeRequired": "00:15:00",
+        "notes": "pro/St."
+      },
+      {
+        "equipment": "Mex-20",
+        "timeRequired": "00:25:00",
+        "notes": "pro/St."
+      },
+      {
+        "equipment": "Mex-M",
+        "timeRequired": "00:15:00",
+        "notes": "pro/St."
+      }
+    ]
+  }
+]
