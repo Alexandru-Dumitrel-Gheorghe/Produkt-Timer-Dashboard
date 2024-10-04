@@ -1,31 +1,32 @@
-// server.js
 const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
+require("dotenv").config(); // Load environment variables from .env
 
 const app = express();
-const PORT = process.env.PORT || 5000; // Folosește variabila de mediu pentru port
+const PORT = process.env.PORT || 5000; // Use the port from environment or default to 5000
 
-// Configurarea middleware-ului
+// Middleware setup
 app.use(cors());
 app.use(bodyParser.json());
 
-// Conectare la MongoDB folosind variabila de mediu
-mongoose
-  .connect(process.env.MONGODB_URI, {
-    connectTimeoutMS: 20000, // 20 de secunde
-    socketTimeoutMS: 45000, // 45 de secunde
-  })
-  .then(() => console.log("Connected to MongoDB"))
-  .catch((error) => console.error("MongoDB connection error:", error));
+// Connect to MongoDB Atlas
+const mongoURI = process.env.MONGODB_URI; // Use environment variable for MongoDB URI
+mongoose.connect(mongoURI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
 const db = mongoose.connection;
 db.on("error", console.error.bind(console, "MongoDB connection error:"));
+db.once("open", () => {
+  console.log("Connected to MongoDB");
+});
 
-// Definirea schema pentru produse
+// Define Product Schema
 const productSchema = new mongoose.Schema({
   equipment: String,
   articleNumber: String,
@@ -40,28 +41,29 @@ const productSchema = new mongoose.Schema({
     default: "Not Started",
   },
   date: {
+    // New field to track the date
     type: Date,
     default: Date.now,
   },
 });
 
-// Definirea schema pentru categorii cu produse încorporate
+// Define Category Schema with nested products
 const categorySchema = new mongoose.Schema({
   category: String,
   products: [productSchema],
 });
 
-// Crearea modelului de categorie
+// Create Category model
 const Category = mongoose.model("Category", categorySchema);
 
-// Încărcarea produselor inițiale din products.json
+// Load initial products from products.json
 const loadInitialProducts = async () => {
   try {
     const dataPath = path.join(__dirname, "data", "products.json");
     const data = fs.readFileSync(dataPath, "utf8");
     const categories = JSON.parse(data);
 
-    // Verificarea dacă colecția de categorii este goală
+    // Check if the categories collection is empty
     const count = await Category.countDocuments();
     if (count === 0) {
       await Category.insertMany(categories);
@@ -72,12 +74,12 @@ const loadInitialProducts = async () => {
   }
 };
 
-// Apelarea funcției pentru a încărca produsele inițiale
+// Call the function to load initial products
 loadInitialProducts();
 
-// Rutele
+// Routes
 
-// Obține toate categoriile și produsele
+// Get all categories and products
 app.get("/products", async (req, res) => {
   try {
     const categories = await Category.find();
@@ -88,31 +90,38 @@ app.get("/products", async (req, res) => {
   }
 });
 
-// Actualizarea stării produsului (începere, pauză, oprire)
+// Update product status (start, pause, stop)
 app.put("/products/:category/:productId", async (req, res) => {
   try {
     const { category, productId } = req.params;
     const { status, elapsedTime } = req.body;
 
-    // Decodificarea categoriei în cazul în care este codificată URL
+    // Log incoming request
+    console.log(
+      `Updating product ID: ${productId} in category: ${category} with status: ${status} and elapsedTime: ${elapsedTime}`
+    );
+
+    // Decode category in case it's URL-encoded
     const decodedCategory = decodeURIComponent(category);
 
-    // Găsirea categoriei și produsului de actualizat
+    // Find the category and product to update
     const categoryData = await Category.findOne({ category: decodedCategory });
     if (categoryData) {
       const product = categoryData.products.id(productId);
       if (product) {
-        // Actualizarea detaliilor produsului
+        // Update product details
         product.status = status;
         if (elapsedTime !== undefined) product.elapsedTime = elapsedTime;
 
-        // Salvarea modificărilor
+        // Save changes
         await categoryData.save();
         res.json({ message: "Product updated successfully", product });
       } else {
+        console.error("Product not found");
         res.status(404).json({ message: "Product not found" });
       }
     } else {
+      console.error("Category not found");
       res.status(404).json({ message: "Category not found" });
     }
   } catch (error) {
@@ -121,10 +130,7 @@ app.put("/products/:category/:productId", async (req, res) => {
   }
 });
 
-// Pornirea serverului
+// Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
-// Exportarea aplicației pentru Vercel
-module.exports = app;
