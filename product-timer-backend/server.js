@@ -4,27 +4,25 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
-require("dotenv").config(); // Load environment variables from .env
+require("dotenv").config(); // Importă dotenv pentru a încărca variabilele de mediu
 
 const app = express();
-const PORT = process.env.PORT || 5000; // Use the port from environment or default to 5000
+const PORT = process.env.PORT || 5000; // Folosește variabila de mediu pentru PORT
 
 // Middleware setup
 app.use(cors());
 app.use(bodyParser.json());
 
-// Connect to MongoDB Atlas
-const mongoURI = process.env.MONGODB_URI; // Use environment variable for MongoDB URI
-mongoose.connect(mongoURI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+// Conectare la MongoDB folosind variabila de mediu
+const mongoURI = process.env.MONGODB_URI;
 
-const db = mongoose.connection;
-db.on("error", console.error.bind(console, "MongoDB connection error:"));
-db.once("open", () => {
-  console.log("Connected to MongoDB");
-});
+mongoose
+  .connect(mongoURI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("Connected to MongoDB"))
+  .catch((err) => console.error("MongoDB connection error:", err));
 
 // Define Product Schema
 const productSchema = new mongoose.Schema({
@@ -41,7 +39,6 @@ const productSchema = new mongoose.Schema({
     default: "Not Started",
   },
   date: {
-    // New field to track the date
     type: Date,
     default: Date.now,
   },
@@ -63,7 +60,6 @@ const loadInitialProducts = async () => {
     const data = fs.readFileSync(dataPath, "utf8");
     const categories = JSON.parse(data);
 
-    // Check if the categories collection is empty
     const count = await Category.countDocuments();
     if (count === 0) {
       await Category.insertMany(categories);
@@ -78,8 +74,10 @@ const loadInitialProducts = async () => {
 loadInitialProducts();
 
 // Routes
+app.get("/", (req, res) => {
+  res.send("Server is running.");
+});
 
-// Get all categories and products
 app.get("/products", async (req, res) => {
   try {
     const categories = await Category.find();
@@ -90,38 +88,25 @@ app.get("/products", async (req, res) => {
   }
 });
 
-// Update product status (start, pause, stop)
 app.put("/products/:category/:productId", async (req, res) => {
   try {
     const { category, productId } = req.params;
     const { status, elapsedTime } = req.body;
 
-    // Log incoming request
-    console.log(
-      `Updating product ID: ${productId} in category: ${category} with status: ${status} and elapsedTime: ${elapsedTime}`
-    );
-
-    // Decode category in case it's URL-encoded
     const decodedCategory = decodeURIComponent(category);
-
-    // Find the category and product to update
     const categoryData = await Category.findOne({ category: decodedCategory });
     if (categoryData) {
       const product = categoryData.products.id(productId);
       if (product) {
-        // Update product details
         product.status = status;
         if (elapsedTime !== undefined) product.elapsedTime = elapsedTime;
 
-        // Save changes
         await categoryData.save();
         res.json({ message: "Product updated successfully", product });
       } else {
-        console.error("Product not found");
         res.status(404).json({ message: "Product not found" });
       }
     } else {
-      console.error("Category not found");
       res.status(404).json({ message: "Category not found" });
     }
   } catch (error) {
