@@ -4,16 +4,16 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
-require("dotenv").config(); // Importă dotenv pentru a încărca variabilele de mediu
+require("dotenv").config();
 
 const app = express();
-const PORT = process.env.PORT || 5000; // Folosește variabila de mediu pentru PORT
+const PORT = process.env.PORT || 5000;
 
 // Middleware setup
 app.use(cors());
 app.use(bodyParser.json());
 
-// Conectare la MongoDB folosind variabila de mediu
+// Conectare la MongoDB
 const mongoURI = process.env.MONGODB_URI;
 
 mongoose
@@ -33,6 +33,11 @@ const productSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  remainingTime: {
+    // Adăugat pentru a salva timpul rămas
+    type: Number,
+    default: 0,
+  },
   status: {
     type: String,
     enum: ["Not Started", "In Progress", "Paused", "Completed"],
@@ -44,7 +49,7 @@ const productSchema = new mongoose.Schema({
   },
 });
 
-// Define Category Schema with nested products
+// Define Category Schema
 const categorySchema = new mongoose.Schema({
   category: String,
   products: [productSchema],
@@ -91,7 +96,7 @@ app.get("/products", async (req, res) => {
 app.put("/products/:category/:productId", async (req, res) => {
   try {
     const { category, productId } = req.params;
-    const { status, elapsedTime } = req.body;
+    const { status, elapsedTime, remainingTime } = req.body;
 
     const decodedCategory = decodeURIComponent(category);
     const categoryData = await Category.findOne({ category: decodedCategory });
@@ -100,6 +105,7 @@ app.put("/products/:category/:productId", async (req, res) => {
       if (product) {
         product.status = status;
         if (elapsedTime !== undefined) product.elapsedTime = elapsedTime;
+        if (remainingTime !== undefined) product.remainingTime = remainingTime; // Update remaining time
 
         await categoryData.save();
         res.json({ message: "Product updated successfully", product });
