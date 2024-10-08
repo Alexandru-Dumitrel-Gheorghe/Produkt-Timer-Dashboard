@@ -5,6 +5,8 @@ const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,8 +23,16 @@ mongoose
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-  .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("MongoDB connection error:", err));
+  .then(() => console.log("Mit MongoDB verbunden"))
+  .catch((err) => console.error("Fehler bei der MongoDB-Verbindung:", err));
+
+// Define User Schema
+const userSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+});
+
+const User = mongoose.model("User", userSchema);
 
 // Define Product Schema
 const productSchema = new mongoose.Schema({
@@ -34,14 +44,13 @@ const productSchema = new mongoose.Schema({
     default: 0,
   },
   remainingTime: {
-    // Adăugat pentru a salva timpul rămas
     type: Number,
     default: 0,
   },
   status: {
     type: String,
-    enum: ["Not Started", "In Progress", "Paused", "Completed"],
-    default: "Not Started",
+    enum: ["Nicht gestartet", "In Bearbeitung", "Pausiert", "Abgeschlossen"],
+    default: "Nicht gestartet",
   },
   date: {
     type: Date,
@@ -53,75 +62,154 @@ const productSchema = new mongoose.Schema({
 const categorySchema = new mongoose.Schema({
   category: String,
   products: [productSchema],
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 });
 
-// Create Category model
 const Category = mongoose.model("Category", categorySchema);
 
-// Load initial products from products.json
-const loadInitialProducts = async () => {
+// Middleware pentru autentificare
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(" ")[1];
+  if (token == null) return res.status(401).json({ message: "Token fehlt" });
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ message: "Ungültiges Token" });
+    req.user = user;
+    next();
+  });
+};
+
+// Laden der initialen Produkte für einen Benutzer
+const loadInitialProductsForUser = async (userId) => {
   try {
     const dataPath = path.join(__dirname, "data", "products.json");
     const data = fs.readFileSync(dataPath, "utf8");
     const categories = JSON.parse(data);
 
-    const count = await Category.countDocuments();
-    if (count === 0) {
-      await Category.insertMany(categories);
-      console.log("Initial products inserted from products.json");
-    }
+    // Füge die Benutzer-ID zu jeder Kategorie hinzu
+    const categoriesWithUser = categories.map((category) => ({
+      ...category,
+      user: userId,
+    }));
+
+    await Category.insertMany(categoriesWithUser);
+    console.log(`Initiale Produkte für Benutzer ${userId} geladen`);
   } catch (error) {
-    console.error("Error reading products.json:", error);
+    console.error("Fehler beim Laden der initialen Produkte:", error);
   }
 };
 
-// Call the function to load initial products
-loadInitialProducts();
+// Routen
 
-// Routes
-app.get("/", (req, res) => {
-  res.send("Server is running.");
+// Benutzer registrieren
+app.post("/register", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    // Überprüfen, ob der Benutzer bereits existiert
+    const existingUser = await User.findOne({ username });
+    if (existingUser)
+      return res.status(400).json({ message: "Benutzer existiert bereits" });
+
+    // Passwort hashen
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Benutzer erstellen
+    const user = new User({ username, password: hashedPassword });
+    await user.save();
+
+    // Initiale Produkte für den Benutzer laden
+    await loadInitialProductsForUser(user._id);
+
+    res.json({ message: "Benutzer erfolgreich registriert" });
+  } catch (error) {
+    console.error("Fehler bei der Registrierung:", error);
+    res.status(500).json({ message: error.message });
+  }
 });
 
-app.get("/products", async (req, res) => {
+// Benutzer einloggen
+app.post("/login", async (req, res) => {
   try {
-    const categories = await Category.find();
+    const { username, password } = req.body;
+    // Benutzer finden
+    const user = await User.findOne({ username });
+    if (!user)
+      return res.status(400).json({ message: "Ungültige Anmeldedaten" });
+
+    // Passwort überprüfen
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      return res.status(400).json({ message: "Ungültige Anmeldedaten" });
+
+    // JWT Token generieren
+    const payload = { userId: user._id };
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    res.json({ message: "Anmeldung erfolgreich", token });
+  } catch (error) {
+    console.error("Fehler bei der Anmeldung:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.get("/", (req, res) => {
+  res.send("Server läuft.");
+});
+
+// Produkte des angemeldeten Benutzers abrufen
+app.get("/products", authenticateToken, async (req, res) => {
+  try {
+    const categories = await Category.find({ user: req.user.userId });
     res.json(categories);
   } catch (error) {
-    console.error("Error fetching categories:", error);
+    console.error("Fehler beim Abrufen der Kategorien:", error);
     res.status(500).json({ message: error.message });
   }
 });
 
-app.put("/products/:category/:productId", async (req, res) => {
-  try {
-    const { category, productId } = req.params;
-    const { status, elapsedTime, remainingTime } = req.body;
+// Produkt des angemeldeten Benutzers aktualisieren
+app.put(
+  "/products/:category/:productId",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { category, productId } = req.params;
+      const { status, elapsedTime, remainingTime } = req.body;
 
-    const decodedCategory = decodeURIComponent(category);
-    const categoryData = await Category.findOne({ category: decodedCategory });
-    if (categoryData) {
-      const product = categoryData.products.id(productId);
-      if (product) {
-        product.status = status;
-        if (elapsedTime !== undefined) product.elapsedTime = elapsedTime;
-        if (remainingTime !== undefined) product.remainingTime = remainingTime; // Update remaining time
+      const decodedCategory = decodeURIComponent(category);
 
-        await categoryData.save();
-        res.json({ message: "Product updated successfully", product });
+      // Kategorie finden, die zum Benutzer gehört
+      const categoryData = await Category.findOne({
+        category: decodedCategory,
+        user: req.user.userId,
+      });
+      if (categoryData) {
+        const product = categoryData.products.id(productId);
+        if (product) {
+          product.status = status;
+          if (elapsedTime !== undefined) product.elapsedTime = elapsedTime;
+          if (remainingTime !== undefined)
+            product.remainingTime = remainingTime;
+
+          await categoryData.save();
+          res.json({ message: "Produkt erfolgreich aktualisiert", product });
+        } else {
+          res.status(404).json({ message: "Produkt nicht gefunden" });
+        }
       } else {
-        res.status(404).json({ message: "Product not found" });
+        res.status(404).json({ message: "Kategorie nicht gefunden" });
       }
-    } else {
-      res.status(404).json({ message: "Category not found" });
+    } catch (error) {
+      console.error("Fehler beim Aktualisieren des Produkts:", error);
+      res.status(500).json({ message: error.message });
     }
-  } catch (error) {
-    console.error("Server Error:", error);
-    res.status(500).json({ message: error.message });
   }
-});
+);
 
-// Start server
+// Server starten
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server läuft auf Port ${PORT}`);
 });
